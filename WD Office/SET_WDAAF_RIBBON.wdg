@@ -1,0 +1,183 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : SET_WDAAF_RIBBON
+ major_version : 28
+ minor_version : 0
+ type : 7
+ description : ""
+ subtype : 0
+procedure_set :
+ identifier : 0x1259645803c198c1
+ internal_properties : CAAAAAgAAABGLu41kG7fjQV3iS4F72qmnKaNh5694reolNKIW0iw
+ code_elements :
+  type_code : 31
+  p_codes : []
+  procedures :
+   -
+     name : RibbonDuplicateTabs
+     internal_properties : CAAAAAgAAADWIdLhCAwuaRpa9+0KtpuiL0QM3ELjDd4I8iyVLbQSg3abkUzxSlAVgMhqsP6W1S4kXNQlzl4NAxDcRZ5MXERlR3BKOvzyD7JmHvo8zi8QewiFY2vXWEVSLoOuYCW2KAUl/ANZriO38DKlUCd2krvmH2VpIKq3colyJ9ZIh7NZhMACvDBZGIdyHrMVI4YOH7XjFfvyLaY=
+     procedure_id : 1322198294792935617
+     type_code : 15
+     code : |1-
+      // Summary: Duplicates the ribbon tabs in another ribbon
+      // Syntax:
+      //RibbonDuplicateTabs (<oSourceRibbon> is control, <oDestinationRibbon> is control [, <arrTabIndices> is array])
+      //
+      // Parameters:
+      //	oSourceRibbon (control): Source ribbon containing the tabs to duplicate
+      //	oDestinationRibbon (control): Destination ribbon where the tabs will be duplicated
+      //	arrTabIndices (array): List of tab indices to duplicate. Il this parameter is not specified, all the tabs of <oSourceRibbon> will be duplicated
+      // Return value:
+      // 	None
+      //
+      procedure RibbonDuplicateTabs(oSourceRibbon is Control, oDestinationRibbon is Control, local arrTabIndices is array of int = [])
+      
+      oSourceRibbon..Style	= oDestinationRibbon..Style
+      oSourceRibbon..Height	= oDestinationRibbon..Height
+      
+      	INTERNAL PROCEDURE ___ClearRibbonTab(oTab is Control)
+      		
+      		// Deletes the group from the cloned tab
+      		nIndex			is int		= 1
+      		sControlName	is string	= EnumControl(oTab..FullName, nIndex)
+      		while sControlName <> ""
+      			
+      			// Deletes the group 
+      			ControlDelete(oTab..FullName + ["."] + sControlName)	
+      			
+      			continue:
+      			sControlName = EnumControl(oTab..FullName, nIndex)
+      		end
+      	end
+      
+      	INTERNAL PROCEDURE ___RibbonDuplicateTab(oTab is Control, oDestinationTab is Control)
+      		
+      		// Enumerates the controls and groups in the tab [i]
+      		nIndex			is int		= 1
+      		sControlName	is string	= EnumControl(oTab..FullName, nIndex)
+      		while sControlName <> ""
+      			
+      			// Clones the control
+      			oClone is Control <- ControlClone(oTab..FullName + "." + sControlName, oDestinationTab..FullName + "." + GetGUID(guidRough))
+      			
+      			nIndex ++			
+      			sControlName = EnumControl(oTab..FullName, nIndex)
+      		end			
+      	end
+      
+      // Clones the ribbon tabs
+      for i = 1 _to_ oSourceRibbon..Count
+      	
+      	// If a list of tab indices was provided and if the index does not match, goes to the next one
+      	if not (arrTabIndices.Count = 0 _or_ Seek(arrTabIndices, asLinear, i) > 0) then
+      		continue
+      	end
+      	
+      	// Clone a tab from the ribbon of the Diagram Editor control
+      	oClone is Control <- ControlClone(oDestinationRibbon[1], "ITEM_" + GetGUID(guidRough))
+      	
+      	// Clears the controls in this cloned tab
+      	___ClearRibbonTab(oClone)
+      	
+      	// Copies the properties
+      	oClone..ToolTip	= oSourceRibbon[i]..ToolTip
+      	oClone..Color	= oSourceRibbon[i]..Color
+      	oClone..State	= oSourceRibbon[i]..State
+      	oClone..Grayed	= oSourceRibbon[i]..Grayed
+      	oClone..Image	= oSourceRibbon[i]..Image
+      	oClone..Caption	= oSourceRibbon[i]..Caption
+      	oClone..Visible	= oSourceRibbon[i]..Visible
+      	
+      	// Copies the groups and controls from RIBBON_NoName1	
+      	oTab is Control <- oSourceRibbon[i]
+      	___RibbonDuplicateTab(oTab, oClone)
+      	
+      end
+     type : 458752
+   -
+     name : RibbonAddGroup
+     internal_properties : CAAAAAgAAAB8x7ieURjsuSq6542KZrtyf3RcvNJzTR6oYuxFXdQigxb7cRzRisCl0Ii6sJ7mVd5ULMRFPo6tI5BMxQ6cXHQFZxBqKlzyf4KWPsrUxid4I8AtG/Nv8L1a1vtG+N3usM395HsB5jvvmJqdKN8u6uOOFw0B6OKvapFan85A3yvhDBjqlNjR8B96ZgvNO/6GpwsNZvGMhww=
+     procedure_id : 1322198294793001153
+     type_code : 15
+     code : |1-
+      // Summary: Adds an existing group into a ribbon tab
+      // Syntax:
+      //[ <Result> = ] RibbonAddGroup (<oRibbon> is control, <nTabIndex> is int, <oGroup> is control)
+      //
+      // Parameters:
+      //	oRibbon (control): Ribbon containing the tab into which the group will be added
+      //	nTabIndex (integer): Tab index
+      //	oGroup (control): Existing group that will be added in the tab. This group will be cloned
+      // Return value:
+      // 	control: Added group. 
+      //
+      procedure RibbonAddGroup(oRibbon is Control, nTabIndex is int, oGroup is Control)
+      
+      XMAX			is int	
+      nIndex			is int	= 1
+      sControlName	is string
+      
+      // 1 - Defines the position to add the group
+      
+      // Enumerates the tab controls
+      sControlName = EnumControl(oRibbon[nTabIndex]..FullName, nIndex)
+      while sControlName <> ""
+      	
+      	// Takes a reference on the control
+      	oControl is Control <- {oRibbon[nTabIndex]..FullName + "." + sControlName, indControl}
+      	
+      	// Calculates the max position
+      	XMAX = Max(XMAX, oControl..X + oControl..Width)
+      	
+      	nIndex ++
+      	sControlName = EnumControl(oRibbon[nTabIndex]..FullName, nIndex)
+      end
+      
+      // 2 - Adds the group
+      
+      // Clones the group
+      oClone is Control <- ControlClone(oGroup, oRibbon[nTabIndex]..FullName + "." + GetGUID(guidRough), XMAX, CoordinateEditorToScreen(3))
+      
+      return oClone
+     type : 458752
+   -
+     name : DeclareShortcut
+     procedure_id : 1322198294793066689
+     type_code : 15
+     code : |1-
+      // Summary: Declares a keyboard shortcut and associates it with a procedure
+      // Syntax:
+      //DeclareShortcut (<nKeys> is int, <pCallback> is procedure)
+      //
+      // Parameters:
+      //	nKeys (integer): Key combination (see ..ShortcutKey)
+      //	pCallback (procedure): Procedure to run when enabling the shortcut
+      // Return value:
+      // 	None
+      //
+      procedure DeclareShortcut(nKeys is int, pCallback is procedure)
+      
+      // Creates an off-screen button
+      oShortcut is Control <- ControlCreate("BTN_SHORTCUT_" + GetGUID(guidRough), typButton, -100, -100, 5, 5, True)
+      
+      // Positions the button on general plane 0
+      oShortcut..Plane				= 0
+      
+      // Assigns the shortcut keys
+      oShortcut..ShortcutKey			= nKeys
+      
+      // Assigns the procedure to the click
+      oShortcut..Process[ trtClick ]	= pCallback
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : CAAAAAgAAACVGQgYbalU7DKC3oH4ItDrjtcTHXXV/EuH8q0IbhyQlw==
+  original_name : COL_SansNom1
+resources :
+ string_res :
+  identifier : 0x10d9977d0363cb53
+  internal_properties : CAAAAAgAAACm76HWfKGWp33VjXInA4cRlqArlgTTA862QGt72W2ld5Y=
+custom_note :
+ internal_properties : CAAAAAgAAABtB9HWVzrXO2+4NDRVK0vmzaNKrCKqH1DBX30lMmGZ
